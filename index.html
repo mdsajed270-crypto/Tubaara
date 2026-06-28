@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>For Tuba 💜</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&family=Dancing+Script:wght@700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --lavender:    #b68edb;
+      --lavender-deep: #7c4fa0;
+      --lavender-pale: #e8d5f5;
+      --sky:         #1a0a2e;
+      --sky-mid:     #2d1155;
+      --leaf:        #4caf50;
+      --leaf-dark:   #2e7d32;
+      --petal:       #e8a0cc;
+      --gold:        #f8d07a;
+      --white:       #fff8ff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Lato', sans-serif;
+      background: var(--sky);
+      color: var(--white);
+      overflow-x: hidden;
+    }
+
+    /* ── MUSIC PLAYER ── */
+    #music-btn {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      background: rgba(182,142,219,0.25);
+      border: 2px solid var(--lavender);
+      color: var(--white); font-size: 1.4rem;
+      width: 52px; height: 52px; border-radius: 50%;
+      cursor: pointer; backdrop-filter: blur(8px);
+      transition: transform .3s, background .3s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #music-btn:hover { transform: scale(1.15); background: rgba(182,142,219,0.45); }
+    #music-btn.playing { animation: pulse-ring 1.8s infinite; }
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(182,142,219,.6); }
+      70%  { box-shadow: 0 0 0 14px rgba(182,142,219,0); }
+      100% { box-shadow: 0 0 0 0 rgba(182,142,219,0); }
+    }
+
+    /* ── CANVAS / FIREWORKS ── */
+    #fireworks-canvas {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ══════════════════════════════════════
+       SECTION 1 – GARDEN (plants grow)
+    ══════════════════════════════════════ */
+    #garden {
+      position: relative; min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-end;
+      overflow: hidden;
+      background: linear-gradient(180deg, #0d001f 0%, #1a0535 40%, #2a1245 70%, #1b4b1c 100%);
+      z-index: 1;
+    }
+
+    /* sky stars */
+    .stars { position: absolute; inset: 0; overflow: hidden; }
+    .star {
+      position: absolute; border-radius: 50%;
+      background: #fff; opacity: 0;
+      animation: twinkle 3s infinite;
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: 0; transform: scale(.6); }
+      50%      { opacity: .9; transform: scale(1); }
+    }
+
+    /* moon */
+    .moon {
+      position: absolute; top: 6vh; left: 50%;
+      transform: translateX(-50%);
+      width: 80px; height: 80px;
+      background: radial-gradient(circle at 35% 35%, #fff8d4, #f0c060);
+      border-radius: 50%;
+      box-shadow: 0 0 40px 10px rgba(240,192,96,.35),
+                  0 0 80px 20px rgba(240,192,96,.15);
+      animation: moonFloat 6s ease-in-out infinite;
+    }
+    @keyframes moonFloat {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(-10px); }
+    }
+
+    /* ground */
+    .ground {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 18%;
+      background: linear-gradient(180deg, #2d6e2d 0%, #1b4b1c 100%);
+      border-radius: 60% 60% 0 0 / 20% 20% 0 0;
+    }
+
+    /* PLANTS CONTAINER */
+    .plants {
+      position: absolute; bottom: 18%; left: 0; right: 0;
+      display: flex; justify-content: center;
+      align-items: flex-end; gap: 14px; flex-wrap: nowrap;
+      padding: 0 10px;
+      z-index: 3;
+    }
+
+    /* Each plant is a relative wrapper so we can stack stem + top */
+    .plant {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* STEM — grows upward using clip-path so transform-origin works perfectly */
+    .stem {
+      width: 6px;
+      border-radius: 3px;
+      background: linear-gradient(0deg, #2e7d32 0%, #66bb6a 100%);
+      animation: stemGrow 1.8s cubic-bezier(0.22,1,0.36,1) forwards;
+      transform-origin: bottom center;
+      transform: scaleY(0);
+      flex-shrink: 0;
+    }
+    @keyframes stemGrow {
+      0%   { transform: scaleY(0); }
+      100% { transform: scaleY(1); }
+    }
+
+    /* FLOWER HEAD — hidden until stem finishes */
+    .flower-head {
+      width: 40px; height: 40px;
+      opacity: 0;
+      animation: flowerBloom 0.7s ease-out forwards, flowerSpin 14s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes flowerBloom {
+      0%   { opacity: 0; transform: scale(0) rotate(-30deg); }
+      60%  { transform: scale(1.2) rotate(5deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+    @keyframes flowerSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* LEAF PAIR */
+    .leaf-pair {
+      position: relative; width: 54px; height: 22px;
+      flex-shrink: 0;
+    }
+    .leaf-l, .leaf-r {
+      position: absolute; top: 3px;
+      width: 26px; height: 13px;
+      border-radius: 80% 0 80% 0;
+      background: linear-gradient(135deg, #81c784, #388e3c);
+      opacity: 0;
+    }
+    .leaf-l {
+      left: 2px;
+      transform-origin: right center;
+      animation: leafOpenL 0.5s ease-out forwards;
+    }
+    .leaf-r {
+      right: 2px;
+      transform-origin: left center;
+      animation: leafOpenR 0.5s ease-out forwards;
+    }
+    @keyframes leafOpenL {
+      0%   { opacity: 0; transform: scaleX(0) rotate(20deg); }
+      100% { opacity: 1; transform: scaleX(1) rotate(-15deg); }
+    }
+    @keyframes leafOpenR {
+      0%   { opacity: 0; transform: scaleX(0) rotate(-20deg); }
+      100% { opacity: 1; transform: scaleX(1) rotate(15deg); }
+    }
+
+    /* LAVENDER SPIKE */
+    .lavender-spike {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2px; flex-shrink: 0;
+    }
+    .spike-bud {
+      display: block;
+      width: 9px; height: 11px;
+      border-radius: 50% 50% 20% 20%;
+      background: radial-gradient(circle at 40% 35%, #d4b0f0, #9a6fc9);
+      box-shadow: 0 0 5px 2px rgba(182,142,219,.4);
+      opacity: 0;
+      transform: scale(0);
+      animation: budPop 0.4s ease-out forwards;
+    }
+    @keyframes budPop {
+      0%   { opacity: 0; transform: scale(0); }
+      70%  { transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* hero text */
+    .garden-text {
+      position: relative; z-index: 5;
+      text-align: center; padding: 0 20px 6vh;
+      animation: fadeUp 1.4s 3s ease-out both;
+    }
+    .garden-text h1 {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(3rem, 8vw, 6rem);
+      color: var(--lavender-pale);
+      text-shadow: 0 0 30px rgba(182,142,219,.8), 0 0 60px rgba(182,142,219,.4);
+      line-height: 1.1;
+    }
+    .garden-text p {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(1rem, 2.5vw, 1.4rem);
+      color: var(--petal);
+      margin-top: 12px;
+      opacity: .9;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* scroll hint */
+    .scroll-hint {
+      position: absolute; bottom: 2vh; left: 50%;
+      transform: translateX(-50%);
+      font-size: .85rem; letter-spacing: .12em;
+      color: rgba(255,255,255,.5);
+      animation: bounce 2s infinite;
+    }
+    @keyframes bounce {
+      0%,100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(8px); }
+    }
+
+    /* ══════════════════════════════════════
+       SECTION 2 – S LETTER
+    ══════════════════════════════════════ */
+    #letter-s {
+      position: relative; z-index: 1;
+      min-height: 80vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #1a0535 0%, #2d1155 100%);
+      padding: 60px 20px;
+      overflow: hidden;
+    }
+
+    .s-wrap {
+      position: relative; display: inline-block;
+    }
+    .big-s {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(160px, 28vw, 280px);
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--lavender-pale), var(--lavender), var(--lavender-deep));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 30px rgba(182,142,219,.6));
+      animation: sGlow 3s ease-in-out infinite alternate;
+      line-height: 1;
+    }
+    @keyframes sGlow {
+      from { filter: drop-shadow(0 0 20px rgba(182,142,219,.4)); }
+      to   { filter: drop-shadow(0 0 50px rgba(182,142,219,1)) drop-shadow(0 0 100px rgba(182,142,219,.5)); }
+    }
+
+    /* sparkles around S */
+    .sparkle {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: sparkleFloat 3s ease-in-out infinite;
+      box-shadow: 0 0 8px 3px rgba(248,208,122,.7);
+    }
+    @keyframes sparkleFloat {
+      0%,100% { transform: translateY(0) scale(1); opacity: 1; }
+      50%      { transform: translateY(-20px) scale(1.4); opacity: .6; }
+    }
+
+    .s-subtitle {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(1.4rem, 4vw, 2.2rem);
+      color: var(--petal);
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    /* petals floating */
+    .floating-petal {
+      position: absolute;
+      font-size: clamp(1rem, 2.5vw, 1.8rem);
+      animation: petalDrift linear infinite;
+      pointer-events: none;
+      opacity: .8;
+    }
+    @keyframes petalDrift {
+      0%   { transform: translateY(-60px) rotate(0deg); opacity: 0; }
+      10%  { opacity: .8; }
+      90%  { opacity: .8; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ══════════════════════════════════════
+       SECTION 3 – LAVENDER FIELD
+    ══════════════════════════════════════ */
+    #lavender-field {
+      position: relative; z-index: 1;
+      min-height: 90vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #2d1155 0%, #3a1a6e 50%, #5c3088 100%);
+      padding: 60px 20px;
+      overflow: hidden;
+    }
+
+    .field-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      color: var(--lavender-pale);
+      text-align: center;
+      margin-bottom: 40px;
+      letter-spacing: .04em;
+    }
+    .field-heading span {
+      font-style: italic; color: var(--lavender);
+    }
+
+    /* SVG lavender row */
+    .lavender-row {
+      display: flex; justify-content: center;
+      gap: 8px; flex-wrap: wrap;
+      max-width: 900px;
+    }
+    .lav-svg {
+      animation: lavSway 3s ease-in-out infinite alternate;
+      transform-origin: bottom center;
+    }
+    .lav-svg:nth-child(even) { animation-direction: alternate-reverse; animation-duration: 3.7s; }
+    @keyframes lavSway {
+      from { transform: rotate(-5deg); }
+      to   { transform: rotate(5deg); }
+    }
+
+    .field-quote {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      color: var(--lavender-pale);
+      text-align: center;
+      max-width: 600px;
+      margin-top: 40px;
+      line-height: 1.7;
+      opacity: .9;
+    }
+    .field-quote::before, .field-quote::after {
+      content: '"'; color: var(--lavender); font-size: 2em;
+      line-height: 0; vertical-align: -.4em;
+    }
+
+    /* ══════════════════════════════════════
+       SECTION 4 – MESSAGES CARDS
+    ══════════════════════════════════════ */
+    #messages {
+      position: relative; z-index: 1;
+      background: linear-gradient(180deg, #5c3088 0%, #2d1155 100%);
+      padding: 80px 20px;
+      display: flex; flex-direction: column;
+      align-items: center;
+    }
+
+    .section-title {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      color: var(--lavender-pale);
+      text-align: center; margin-bottom: 50px;
+      text-shadow: 0 0 20px rgba(182,142,219,.5);
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 28px; max-width: 920px; width: 100%;
+    }
+
+    .card {
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(182,142,219,.3);
+      border-radius: 20px; padding: 32px 28px;
+      backdrop-filter: blur(12px);
+      transition: transform .3s, box-shadow .3s;
+      text-align: center;
+    }
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 40px rgba(182,142,219,.3);
+    }
+    .card-icon { font-size: 2.4rem; margin-bottom: 14px; display: block; }
+    .card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem; color: var(--lavender);
+      margin-bottom: 10px;
+    }
+    .card p {
+      font-size: .95rem; line-height: 1.7;
+      color: rgba(255,248,255,.75);
+    }
+
+    /* ══════════════════════════════════════
+       SECTION 5 – FINAL WISH
+    ══════════════════════════════════════ */
+    #final {
+      position: relative; z-index: 1;
+      min-height: 70vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #2d1155 0%, #0d001f 100%);
+      padding: 80px 20px;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .heart-anim {
+      font-size: clamp(3rem, 8vw, 6rem);
+      animation: heartBeat 1.2s ease-in-out infinite;
+      display: block; margin-bottom: 20px;
+    }
+    @keyframes heartBeat {
+      0%,100% { transform: scale(1); }
+      15%      { transform: scale(1.25); }
+      30%      { transform: scale(1); }
+      45%      { transform: scale(1.15); }
+    }
+
+    .final-name {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(2.8rem, 9vw, 6rem);
+      color: var(--lavender-pale);
+      text-shadow: 0 0 40px rgba(182,142,219,.9), 0 0 80px rgba(182,142,219,.5);
+    }
+
+    .final-msg {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(1rem, 2.5vw, 1.4rem);
+      color: var(--petal);
+      max-width: 500px; margin: 20px auto 0;
+      line-height: 1.8; opacity: .9;
+    }
+
+    /* footer */
+    footer {
+      position: relative; z-index: 1;
+      text-align: center; padding: 30px 20px;
+      font-size: .8rem;
+      color: rgba(255,255,255,.3);
+      background: #0d001f;
+    }
+    footer span { color: var(--lavender); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 480px) {
+      .stem { width: 4px; }
+      .lavender-row { gap: 4px; }
+    }
+
+    /* ══════════════════════════════════════
+       SECTION 6 – I LOVE YOU FLOOD
+    ══════════════════════════════════════ */
+    #love-flood {
+      position: relative; z-index: 1;
+      width: 100%; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: #0d001f;
+      overflow: hidden;
+    }
+
+    #love-canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+    }
+
+    #love-center {
+      position: relative; z-index: 10;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .love-big-heart {
+      display: block;
+      font-size: clamp(4rem, 12vw, 8rem);
+      animation: heartBeat 1.2s ease-in-out infinite;
+      filter: drop-shadow(0 0 30px rgba(182,142,219,1));
+    }
+
+    .love-main-text {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(3.5rem, 12vw, 9rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #fff8ff, #e8d5f5, #b68edb, #f9b4c0);
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradShift 3s ease-in-out infinite, lovePulse 2s ease-in-out infinite;
+      filter: drop-shadow(0 0 40px rgba(182,142,219,.9));
+      line-height: 1.1;
+    }
+
+    @keyframes gradShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes lovePulse {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.06); }
+    }
+
+    .love-sub {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(1.2rem, 3.5vw, 2rem);
+      color: #e8a0cc;
+      margin-top: 12px;
+      opacity: .9;
+      animation: fadeUp 1s 0.5s ease-out both;
+    }
+
+    /* ══════════════════════════════════════
+       SECTION 7 – PHOTO PUZZLE GAME
+    ══════════════════════════════════════ */
+    #puzzle-section {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #0d001f 0%, #1a0535 60%, #2d1155 100%);
+      padding: 60px 20px;
+      overflow: hidden;
+    }
+
+    #puzzle-section h2 {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(2rem, 5vw, 3rem);
+      color: var(--lavender-pale);
+      text-align: center;
+      margin-bottom: 8px;
+      text-shadow: 0 0 20px rgba(182,142,219,.6);
+    }
+
+    #puzzle-section .puzzle-sub {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(.9rem, 2vw, 1.1rem);
+      color: var(--petal);
+      margin-bottom: 28px;
+      text-align: center;
+      opacity: .85;
+    }
+
+    #puzzle-controls {
+      display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center;
+    }
+
+    .puzzle-btn {
+      font-family: 'Lato', sans-serif;
+      font-size: .95rem; font-weight: 600;
+      padding: 10px 24px; border-radius: 50px;
+      border: 2px solid var(--lavender);
+      background: rgba(182,142,219,.15);
+      color: var(--lavender-pale);
+      cursor: pointer; letter-spacing: .06em;
+      transition: background .25s, transform .2s, box-shadow .2s;
+      backdrop-filter: blur(8px);
+    }
+    .puzzle-btn:hover {
+      background: rgba(182,142,219,.35);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(182,142,219,.3);
+    }
+    .puzzle-btn.active {
+      background: rgba(182,142,219,.45);
+      box-shadow: 0 0 20px rgba(182,142,219,.5);
+    }
+
+    #puzzle-wrapper {
+      position: relative;
+      box-shadow: 0 0 50px rgba(182,142,219,.4), 0 0 100px rgba(182,142,219,.15);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid rgba(182,142,219,.4);
+    }
+
+    #puzzle-board {
+      display: grid;
+      background: #0d001f;
+      gap: 2px;
+      padding: 2px;
+      border-radius: 10px;
+      touch-action: none;
+    }
+
+    .puzzle-tile {
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+      transition: transform .12s, box-shadow .12s;
+      background-size: cover;
+      background-repeat: no-repeat;
+      position: relative;
+    }
+    .puzzle-tile:hover:not(.empty-tile) {
+      transform: scale(1.04);
+      box-shadow: 0 0 12px rgba(182,142,219,.7);
+      z-index: 2;
+    }
+    .puzzle-tile.empty-tile {
+      cursor: default;
+      background: rgba(182,142,219,.08) !important;
+      border: 2px dashed rgba(182,142,219,.3);
+    }
+    .puzzle-tile.slide-anim {
+      transition: transform .18s cubic-bezier(.4,0,.2,1);
+    }
+
+    #puzzle-stats {
+      display: flex; gap: 30px; margin-top: 20px; flex-wrap: wrap; justify-content: center;
+    }
+    .stat-box {
+      text-align: center;
+      background: rgba(182,142,219,.1);
+      border: 1px solid rgba(182,142,219,.25);
+      border-radius: 12px;
+      padding: 12px 22px;
+      backdrop-filter: blur(6px);
+    }
+    .stat-label { font-size: .75rem; color: rgba(255,248,255,.5); letter-spacing: .1em; text-transform: uppercase; }
+    .stat-val   { font-family: 'Playfair Display', serif; font-siz
